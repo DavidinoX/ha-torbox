@@ -87,6 +87,12 @@ const SCENARIOS = {
   idle: { plan: "essential", premium: now + 4 * 864e5, cooldown: null, total: 88, cloud: 12, downloads: [], upload: 0, wave: "bursts" },
   free: { plan: "free", premium: now - 3 * 864e5, cooldown: now + 42 * 60e3, total: 7, cloud: 3, downloads: [BASE[0]], upload: 0, wave: (x) => .3 * Math.sin(x * 9) },
   nohistory: { plan: "pro", premium: now + 23.5 * 864e5, cooldown: null, total: 1342, cloud: 57, downloads: BASE.slice(0, 2), upload: 2e5, wave: null },
+  // same shape as a real account whose torrents are being checked / have no seeds (names are placeholders)
+  stalled: { plan: "pro", premium: now + 25 * 864e5, cooldown: null, total: 90, cloud: 579, upload: 0, wave: () => 0, downloads: [
+    { name: "Example.Movie.2019.1080p.BluRay.x264-GROUP", type: "torrent", state: "checking", progress: 0, speed: 0, eta: 0, size: 0, seeds: 0, peers: 2 },
+    { name: "Example.Movie.2019.BluRay.1080p.DTS-AC3", type: "torrent", state: "stalled (no seeds)", progress: 35.1, speed: 0, eta: 0, size: 11350107873, seeds: 0, peers: 1 },
+    { name: "Example.Movie.2019.BDRip.XviD.AC3", type: "torrent", state: "checking", progress: 0, speed: 0, eta: 0, size: 0, seeds: 0, peers: 2 },
+  ] },
   unavailable: { unavailable: true },
 };
 
@@ -167,6 +173,21 @@ for (const k of Object.keys(SCENARIOS)) hassFor[k] = buildHass(k, scenarioStates
 // ---- cases: what a user can set in the HA editor (validated below) -------------------------------------
 const stub = Card.getStubConfig(hassFor.normal);
 const SECTIONS = [
+  { title: "Super compatta (layout: compact)", lead: "Ogni sezione diventa una fascia orizzontale. I primi due casi hanno stessi dati e larghezza: confronta l'altezza misurata.", cases: [
+    { title: "Standard (riferimento)", width: 420, config: stub },
+    { title: "Super compatta", width: 420, config: { ...stub, layout: "compact" } },
+    { title: "Tema chiaro + sottotitolo", width: 480, config: { ...stub, layout: "compact", theme: "light", title: "Casa" } },
+    { title: "Card larga @ 760 px", desc: "Con spazio a disposizione compaiono tipo, stato, seed, peer e dimensione.", width: 760, config: { ...stub, layout: "compact" } },
+    { title: "Card stretta @ 340 px", desc: "Mini-grafico e badge del piano si nascondono per far stare tutto su una riga.", width: 340, config: { ...stub, layout: "compact" } },
+    { title: "size: small @ 280 px", width: 280, config: { ...stub, layout: "compact", size: "small" } },
+    { title: "size: large @ 600 px", width: 600, config: { ...stub, layout: "compact", size: "large" } },
+    { title: "Download fermi (come il tuo account)", desc: "In verifica / senza seed: velocità 0, ETA e dimensione sconosciute.", width: 480, config: { ...stub, layout: "compact" }, scenario: "stalled" },
+    { title: "12 download, max 6, per avanzamento", width: 480, config: { ...stub, layout: "compact", max_downloads: 6, sort: "progress" }, scenario: "many" },
+    { title: "Nessun download", width: 420, config: { ...stub, layout: "compact" }, scenario: "idle" },
+    { title: "Numeri normali, tema scuro", width: 420, config: { ...stub, layout: "compact", plain_numbers: true, theme: "dark" } },
+    { title: "Solo velocità e grafico", desc: "La card diventa una sola riga.", width: 420, config: { device_id: DEVICE, layout: "compact", hide_stats: true, hide_downloads: true } },
+    { title: "Solo download", width: 420, config: { device_id: DEVICE, layout: "compact", hide_header: true, hide_speed: true, hide_upload: true, hide_chart: true, hide_stats: true } },
+  ] },
   { title: "Configurazioni", lead: "Le stesse opzioni dell'editor visuale di HA. La prima è esattamente ciò che HA inserisce quando aggiungi la card dal selettore.", cases: [
     { title: "Default (dal selettore card)", desc: "getStubConfig(): account rilevato + statistiche predefinite.", width: 480, config: stub },
     { title: "Tema chiaro + sottotitolo", width: 480, config: { ...stub, theme: "light", title: "Casa" } },
@@ -264,6 +285,7 @@ function render() {
         ${c.desc ? `<p>${c.desc}</p>` : ""}
         <div class="tags">
           <span class="tag">${c.width} px${c.height ? ` × ${c.height} px` : ""}</span>
+          <span class="tag height">…</span>
           <span class="tag">dati: ${scenario}</span>
           <span class="tag ${errors.length ? "bad" : "ok"}">${errors.length ? errors.join(" · ") : "✓ configurabile in HA"}</span>
         </div>
@@ -273,6 +295,7 @@ function render() {
       card.setConfig(c.config);
       card.hass = hassFor[scenario];
       el.querySelector(".frame").append(card);
+      setTimeout(() => (el.querySelector(".height").textContent = `altezza ${Math.round(el.querySelector(".frame").offsetHeight)} px`), 400);
       cards.push({ card, scenario, config: c.config });
       wrap.append(el);
     }

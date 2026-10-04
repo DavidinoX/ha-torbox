@@ -21,7 +21,7 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 DOMAIN = "torbox"
-VERSION = "1.1.1"  # keep in sync with manifest.json, busts the card's browser cache
+VERSION = "1.2.0"  # keep in sync with manifest.json, busts the card's browser cache
 API = "https://api.torbox.app/v1/api/"
 CARD_URL = f"/{DOMAIN}/torbox-card.js"
 # item type -> API path prefix of its "mylist" endpoint
@@ -70,7 +70,8 @@ async def fetch_all(session: aiohttp.ClientSession, key: str) -> dict[str, Any]:
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Serve the Lovelace card and load it on every dashboard."""
     await hass.http.async_register_static_paths(
-        [StaticPathConfig(CARD_URL, str(Path(__file__).parent / "torbox-card.js"), True)]
+        # no long-lived cache: browsers revalidate, so a card-only update shows up after a reload
+        [StaticPathConfig(CARD_URL, str(Path(__file__).parent / "torbox-card.js"), False)]
     )
     add_extra_js_url(hass, f"{CARD_URL}?v={VERSION}")
     return True

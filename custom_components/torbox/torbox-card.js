@@ -13,14 +13,14 @@ const T = {
     },
     cfg: {
       device_id: "TorBox account", sec_look: "Appearance", sec_top: "Header, speed and chart", sec_stats: "Statistics",
-      sec_dl: "Downloads", theme: "Theme", size: "Size", title: "Subtitle", plain_numbers: "Plain numbers (no dot-matrix)",
+      sec_dl: "Downloads", layout: "Layout", theme: "Theme", size: "Size", title: "Subtitle", plain_numbers: "Plain numbers (no dot-matrix)",
       hide_header: "Hide header", hide_plan: "Hide plan badge", hide_speed: "Hide download speed", hide_upload: "Hide upload speed",
       hide_chart: "Hide chart", chart_hours: "Chart span (hours)", hide_stats: "Hide statistics",
       stats: "Statistics shown (drag to reorder)", hide_downloads: "Hide downloads", hide_empty: "Hide section when empty",
       max_downloads: "Max downloads shown", sort: "Sort by", hide_types: "Hide types", hide_details: "Hide details",
     },
     opt: {
-      auto: "Auto (follow Home Assistant)", dark: "Dark", light: "Light", small: "Small", medium: "Medium", large: "Large",
+      standard: "Standard", compact: "Super compact", auto: "Auto (follow Home Assistant)", dark: "Dark", light: "Light", small: "Small", medium: "Medium", large: "Large",
       xlarge: "Extra large", default: "TorBox order", progress: "Progress", speed: "Speed", name: "Name", eta: "ETA",
       type: "Type", state: "State", seeds: "Seeds", peers: "Peers", size: "Size", torrent: "Torrent", usenet: "Usenet", webdl: "Web",
       active_downloads: "Active downloads", total_downloaded: "Total downloads", cloud_items: "Cloud items",
@@ -40,7 +40,7 @@ const T = {
     },
     cfg: {
       device_id: "Account TorBox", sec_look: "Aspetto", sec_top: "Intestazione, velocità e grafico", sec_stats: "Statistiche",
-      sec_dl: "Download", theme: "Tema", size: "Dimensione", title: "Sottotitolo", plain_numbers: "Numeri normali (senza pallini)",
+      sec_dl: "Download", layout: "Layout", theme: "Tema", size: "Dimensione", title: "Sottotitolo", plain_numbers: "Numeri normali (senza pallini)",
       hide_header: "Nascondi intestazione", hide_plan: "Nascondi badge piano", hide_speed: "Nascondi velocità download",
       hide_upload: "Nascondi velocità upload", hide_chart: "Nascondi grafico", chart_hours: "Ampiezza grafico (ore)",
       hide_stats: "Nascondi statistiche", stats: "Statistiche mostrate (trascina per riordinare)",
@@ -48,7 +48,7 @@ const T = {
       sort: "Ordina per", hide_types: "Nascondi tipi", hide_details: "Nascondi dettagli",
     },
     opt: {
-      auto: "Auto (segue Home Assistant)", dark: "Scuro", light: "Chiaro", small: "Piccola", medium: "Media", large: "Grande",
+      standard: "Standard", compact: "Super compatta", auto: "Auto (segue Home Assistant)", dark: "Scuro", light: "Chiaro", small: "Piccola", medium: "Media", large: "Grande",
       xlarge: "Molto grande", default: "Ordine TorBox", progress: "Avanzamento", speed: "Velocità", name: "Nome", eta: "ETA",
       type: "Tipo", state: "Stato", seeds: "Seed", peers: "Peer", size: "Dimensione", torrent: "Torrent", usenet: "Usenet", webdl: "Web",
       active_downloads: "Download attivi", total_downloaded: "Download totali", cloud_items: "Elementi in cloud",
@@ -65,7 +65,7 @@ const TYPES = ["torrent", "usenet", "webdl"];
 const DETAILS = ["progress", "type", "state", "seeds", "peers", "size", "speed", "eta"];
 const SIZES = { small: 12, medium: 14, large: 16, xlarge: 19 }; // base font px; everything else is em
 const DEFAULTS = {
-  theme: "auto", size: "medium", chart_hours: 1, max_downloads: 10, sort: "default",
+  layout: "standard", theme: "auto", size: "medium", chart_hours: 1, max_downloads: 10, sort: "default",
   stats: ["active_downloads", "total_downloaded", "cloud_items", "premium_expires"], hide_types: [], hide_details: [],
 };
 const SORT = {
@@ -217,6 +217,37 @@ const CSS = `
   .empty { display: flex; flex-direction: column; align-items: center; gap: .7em; padding: 1.3em 0 .45em; font-size: .93em; color: var(--muted); }
   .bolt { width: 2.3em; height: 2.3em; fill: none; stroke: var(--accent); stroke-width: 1.2; stroke-linejoin: round; }
 
+  /* super compact layout: every section collapses into one horizontal band */
+  ha-card.compact { --pad: 1em; }
+  ha-card.compact .block + .block { margin-top: .7em; }
+  .top { display: flex; align-items: center; gap: .75em; min-width: 0; }
+  .top .logo { width: 1.55em; height: 1.55em; }
+  .spd { display: flex; align-items: center; flex: none; }
+  .spd .dots { fill: var(--hero); }
+  .spd .plain { font-size: 1.6em; font-weight: 600; line-height: 1; letter-spacing: -.02em; color: var(--hero); }
+  .spd .unit { margin-left: .4em; font-size: .86em; }
+  .spark { flex: 1 1 3em; min-width: 2em; height: 1.9em; }
+  .spark svg { display: block; width: 100%; height: 100%; }
+  .spark path { vector-effect: non-scaling-stroke; }
+  .upc { flex: none; font-size: .86em; font-weight: 600; color: var(--muted); white-space: nowrap; }
+  .cstats { display: flex; flex-wrap: wrap; gap: .3em .95em; padding: .5em 0; border-block: 1px solid var(--line); }
+  .cstat { display: flex; align-items: baseline; gap: .45em; white-space: nowrap; }
+  .cstat .label { font-size: .72em; letter-spacing: .07em; }
+  .cstat b { font-weight: 600; }
+  .citem { position: relative; display: flex; align-items: center; gap: .6em; min-width: 0; margin: 0 -.7em;
+    padding: .45em .7em .55em; border-radius: .4em; transition: background .2s; }
+  .citem:hover { background: var(--hover); }
+  .citem .dot { width: .45em; height: .45em; flex: none; border-radius: 50%; background: currentColor; }
+  .citem .name { font-size: .93em; }
+  .cm { display: flex; gap: .7em; flex: none; font-size: .8em; color: var(--muted); white-space: nowrap; }
+  .cm b { color: var(--text); font-weight: 600; }
+  .cm.wide { display: none; }
+  .citem .bar { position: absolute; left: .7em; right: .7em; bottom: 0; height: 2px; margin: 0; }
+  .cempty { display: flex; align-items: center; gap: .5em; padding: .2em 0; font-size: .86em; color: var(--muted); }
+  .cempty .bolt { width: 1.3em; height: 1.3em; }
+  @container (min-width: 36em) { .cm.wide { display: block; } }
+  @container (max-width: 24em) { .top .spark, .top .pill:not(.warn) { display: none; } }
+
   /* em in container queries = the card's own font size, so breakpoints follow the "size" option */
   @container (max-width: 30em) { .stats { grid-template-columns: repeat(2, 1fr) !important; } }
   @container (max-width: 20em) { .hero { flex-direction: column; align-items: flex-start; } .up { margin-left: 0; text-align: left; } }
@@ -253,6 +284,7 @@ class TorBoxCard extends HTMLElement {
       schema: [
         { name: "device_id", required: true, selector: { device: { integration: "torbox" } } },
         section("sec_look",
+          { name: "layout", default: DEFAULTS.layout, selector: select(["standard", "compact"]) },
           grid(
             { name: "theme", default: DEFAULTS.theme, selector: select(["auto", "dark", "light"]) },
             { name: "size", default: DEFAULTS.size, selector: select(Object.keys(SIZES)) },
@@ -302,6 +334,8 @@ class TorBoxCard extends HTMLElement {
 
   getCardSize() {
     const c = this._config ?? DEFAULTS;
+    if (c.layout === "compact")
+      return 1 + (c.hide_stats ? 0 : 1) + (c.hide_downloads ? 0 : Math.ceil(Math.min(c.max_downloads, 6) / 2));
     return 1 + (c.hide_speed && c.hide_upload ? 0 : 2) + (c.hide_chart ? 0 : 1) + (c.hide_stats ? 0 : 1) +
       (c.hide_downloads ? 0 : 1 + Math.min(c.max_downloads, 3));
   }
@@ -358,7 +392,7 @@ class TorBoxCard extends HTMLElement {
     }
   }
 
-  _chart(unit, span) {
+  _chart(unit, span, compact = false) {
     const W = 300, H = 56, t0 = Date.now() - span;
     const all = [...this._series.download_speed, ...this._series.upload_speed].filter((p) => p.t >= t0);
     if (!all.length) return "";
@@ -374,8 +408,9 @@ class TorBoxCard extends HTMLElement {
     const ul = this._config.hide_upload ? [] : line(this._series.upload_speed);
     const area = dl.length ? `${curve(dl)}L${W},${H}L${dl[0][0]},${H}Z` : "";
     const hours = span / 3600e3;
+    const caption = `${hours === 1 ? "60 min" : `${hours} h`} · ${t("ui.peak")} ${n(peak, 2)} ${unit}`;
     return `
-      <div class="chart" data-entity="${this._ids.download_speed}">
+      <div class="${compact ? "spark" : "chart"}" data-entity="${this._ids.download_speed}"${compact ? ` title="${esc(caption)}"` : ""}>
         <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
           <defs>
             <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
@@ -386,10 +421,10 @@ class TorBoxCard extends HTMLElement {
           <path d="${curve(ul)}" fill="none" style="stroke: var(--ul)" stroke-width="1" stroke-dasharray="2 3"/>
           <path d="${curve(dl)}" fill="none" style="stroke: var(--accent)" stroke-width="1.75"/>
         </svg>
-        <div class="cap">
+        ${compact ? "" : `<div class="cap">
           <span class="label num">${hours === 1 ? "60 min" : `${hours} h`}</span>
           <span class="label num">${t("ui.peak")} ${esc(n(peak, 2))} ${esc(unit)}</span>
-        </div>
+        </div>`}
       </div>`;
   }
 
@@ -416,6 +451,32 @@ class TorBoxCard extends HTMLElement {
       </div>`;
   }
 
+  // One line per download; the progress bar becomes a hairline under the row.
+  _citem(d, i, ids, hide) {
+    const pct = Math.min(100, Math.max(0, Number(d.progress) || 0));
+    const state = d.state ? d.state[0].toUpperCase() + d.state.slice(1) : "";
+    const wide = [
+      !hide.has("type") && esc(t(`opt.${d.type}`)),
+      !hide.has("state") && state && `<span class="${tone(d.state)}">${esc(state)}</span>`,
+      !hide.has("seeds") && d.seeds != null && `${n(d.seeds, 0)} ${t("ui.seeds")}`,
+      !hide.has("peers") && d.peers != null && `${n(d.peers, 0)} ${t("ui.peers")}`,
+      !hide.has("size") && d.size && esc(bytes(d.size)),
+    ].filter(Boolean).join(" · ");
+    const core = [
+      !hide.has("progress") && `<b class="num">${esc(n(pct))}%</b>`,
+      !hide.has("speed") && d.speed && `<span class="rate num">${esc(bytes(d.speed))}/s</span>`,
+      !hide.has("eta") && d.eta > 0 && `<span class="num">${esc(duration(d.eta))}</span>`,
+    ].filter(Boolean).join("");
+    return `
+      <div class="citem" data-entity="${ids.active_downloads}" title="${esc(d.name)}${state ? ` — ${esc(state)}` : ""}">
+        ${hide.has("state") ? "" : `<span class="dot ${tone(d.state)}"></span>`}
+        <span class="name">${esc(d.name)}</span>
+        ${wide ? `<span class="cm wide">${wide}</span>` : ""}
+        ${core ? `<span class="cm">${core}</span>` : ""}
+        <div class="bar"><i data-i="${i}" style="width:${this._widths[`${d.type}:${d.name}`] ?? 0}%"></i></div>
+      </div>`;
+  }
+
   _render() {
     const c = this._config, hass = this._hass;
     if (!c || !hass) return;
@@ -429,7 +490,9 @@ class TorBoxCard extends HTMLElement {
     lang = hass.locale?.language ?? hass.language;
 
     const size = SIZES[c.size] ? c.size : DEFAULTS.size;
-    const card = (body) => `<style>${CSS}</style><ha-card class="s-${size} ${light ? "light" : ""}">${body}</ha-card>`;
+    const compact = c.layout === "compact";
+    const card = (body) =>
+      `<style>${CSS}</style><ha-card class="s-${size} ${light ? "light" : ""} ${compact ? "compact" : ""}">${body}</ha-card>`;
     if (cur.length === 1) {
       this.shadowRoot.innerHTML = card(`<div class="empty">${BOLT}${t("ui.pick")}</div>`);
       return;
@@ -449,38 +512,57 @@ class TorBoxCard extends HTMLElement {
     if (SORT[c.sort]) downloads = [...downloads].sort(SORT[c.sort]);
     const cooldown = ok(st.cooldown_until) ? Date.parse(st.cooldown_until.state) - Date.now() : 0;
     const blocks = [];
-
-    if (!c.hide_header)
-      blocks.push(`
-        <div class="block head">
-          ${LOGO}${c.plain_numbers ? `<span class="word">TORBOX</span>` : dots("TORBOX", base)}
-          ${c.title ? `<span class="sub">${esc(c.title)}</span>` : ""}
-          <span class="spacer"></span>
-          ${cooldown > 0 ? `<span class="pill warn" data-entity="${ids.cooldown_until}">${t("ui.cooldown")} ${duration(cooldown / 1000)}</span>` : ""}
-          ${!c.hide_plan && ok(st.plan) ? `<span class="pill" data-entity="${ids.plan}">${esc(fmt("plan"))}</span>` : ""}
-        </div>`);
-
+    const pills = `
+      ${cooldown > 0 ? `<span class="pill warn" data-entity="${ids.cooldown_until}">${t("ui.cooldown")} ${duration(cooldown / 1000)}</span>` : ""}
+      ${!c.hide_plan && ok(st.plan) ? `<span class="pill" data-entity="${ids.plan}">${esc(fmt("plan"))}</span>` : ""}`;
     const speed = c.plain_numbers
       ? `<span class="plain num">${esc(num("download_speed"))}</span>`
-      : dots(num("download_speed"), base * 2.6);
-    if (!c.hide_speed || !c.hide_upload || showChart)
-      blocks.push(`
-        <div class="block">
-          ${c.hide_speed && c.hide_upload ? "" : `
-            <div class="hero">
-              ${c.hide_speed ? "" : `
-                <div data-entity="${ids.download_speed}">
-                  <div class="label"><span class="live ${all.length ? "on" : ""}"></span>${t("ui.dl")}</div>
-                  <div class="big">${speed}<span class="unit">${esc(unit)}</span></div>
-                </div>`}
-              ${c.hide_upload ? "" : `
-                <div class="up" data-entity="${ids.upload_speed}">
-                  <div class="label">${t("ui.ul")}</div>
-                  <div class="v num">${esc(fmt("upload_speed"))}</div>
-                </div>`}
-            </div>`}
-          ${showChart ? this._chart(unit, span) : ""}
-        </div>`);
+      : dots(num("download_speed"), base * (compact ? 1.6 : 2.6));
+
+    if (compact) {
+      // header, speed, chart and upload share a single row
+      const spark = showChart ? this._chart(unit, span, true) : "";
+      if (!c.hide_header || !c.hide_speed || !c.hide_upload || spark)
+        blocks.push(`
+          <div class="block top">
+            ${c.hide_header ? "" : LOGO}
+            ${!c.hide_header && c.title ? `<span class="sub">${esc(c.title)}</span>` : ""}
+            ${c.hide_speed ? "" : `
+              <div class="spd" data-entity="${ids.download_speed}">
+                <span class="live ${all.length ? "on" : ""}"></span>${speed}<span class="unit">${esc(unit)}</span>
+              </div>`}
+            ${spark || `<span class="spacer"></span>`}
+            ${c.hide_upload ? "" : `<span class="upc num" data-entity="${ids.upload_speed}">↑ ${esc(fmt("upload_speed"))}</span>`}
+            ${c.hide_header ? "" : pills}
+          </div>`);
+    } else {
+      if (!c.hide_header)
+        blocks.push(`
+          <div class="block head">
+            ${LOGO}${c.plain_numbers ? `<span class="word">TORBOX</span>` : dots("TORBOX", base)}
+            ${c.title ? `<span class="sub">${esc(c.title)}</span>` : ""}
+            <span class="spacer"></span>
+            ${pills}
+          </div>`);
+      if (!c.hide_speed || !c.hide_upload || showChart)
+        blocks.push(`
+          <div class="block">
+            ${c.hide_speed && c.hide_upload ? "" : `
+              <div class="hero">
+                ${c.hide_speed ? "" : `
+                  <div data-entity="${ids.download_speed}">
+                    <div class="label"><span class="live ${all.length ? "on" : ""}"></span>${t("ui.dl")}</div>
+                    <div class="big">${speed}<span class="unit">${esc(unit)}</span></div>
+                  </div>`}
+                ${c.hide_upload ? "" : `
+                  <div class="up" data-entity="${ids.upload_speed}">
+                    <div class="label">${t("ui.ul")}</div>
+                    <div class="v num">${esc(fmt("upload_speed"))}</div>
+                  </div>`}
+              </div>`}
+            ${showChart ? this._chart(unit, span) : ""}
+          </div>`);
+    }
 
     const statValue = (k) => {
       if (k === "plan" || k === "download_speed" || k === "upload_speed") return fmt(k);
@@ -494,27 +576,34 @@ class TorBoxCard extends HTMLElement {
     };
     const stats = arr(c.stats, DEFAULTS.stats).filter((k) => STATS.includes(k) && ids[k]);
     if (!c.hide_stats && stats.length)
-      blocks.push(`
-        <div class="block stats" style="grid-template-columns: repeat(${Math.min(stats.length, 4)}, 1fr)">
-          ${stats.map((k) => `
-            <div class="stat" data-entity="${ids[k]}">
-              <div class="v num">${esc(statValue(k))}</div><span class="label">${t(`stat.${k}`)}</span>
-            </div>`).join("")}
-        </div>`);
+      blocks.push(compact
+        ? `<div class="block cstats">
+            ${stats.map((k) => `
+              <span class="cstat" data-entity="${ids[k]}"><span class="label">${t(`stat.${k}`)}</span><b class="num">${esc(statValue(k))}</b></span>`).join("")}
+          </div>`
+        : `<div class="block stats" style="grid-template-columns: repeat(${Math.min(stats.length, 4)}, 1fr)">
+            ${stats.map((k) => `
+              <div class="stat" data-entity="${ids[k]}">
+                <div class="v num">${esc(statValue(k))}</div><span class="label">${t(`stat.${k}`)}</span>
+              </div>`).join("")}
+          </div>`);
 
     const shown = downloads.slice(0, Math.max(1, Math.round(Number(c.max_downloads)) || DEFAULTS.max_downloads));
     const hide = new Set(arr(c.hide_details, []));
+    const more = downloads.length > shown.length ? `<div class="more">+${downloads.length - shown.length} ${t("ui.more")}</div>` : "";
     if (!c.hide_downloads && !(c.hide_empty && !downloads.length))
-      blocks.push(`
-        <div class="block downloads">
-          <div class="section"><span class="label">${t("ui.queue")}</span><span class="count num">${downloads.length}</span></div>
-          ${shown.length
-            ? `<div class="items">
-                ${shown.map((d, i) => this._item(d, i, ids, hide)).join("")}
-                ${downloads.length > shown.length ? `<div class="more">+${downloads.length - shown.length} ${t("ui.more")}</div>` : ""}
-              </div>`
-            : `<div class="empty">${BOLT}${t("ui.none")}</div>`}
-        </div>`);
+      blocks.push(compact
+        ? `<div class="block downloads">
+            ${shown.length
+              ? `<div class="items">${shown.map((d, i) => this._citem(d, i, ids, hide)).join("")}${more}</div>`
+              : `<div class="cempty">${BOLT}${t("ui.none")}</div>`}
+          </div>`
+        : `<div class="block downloads">
+            <div class="section"><span class="label">${t("ui.queue")}</span><span class="count num">${downloads.length}</span></div>
+            ${shown.length
+              ? `<div class="items">${shown.map((d, i) => this._item(d, i, ids, hide)).join("")}${more}</div>`
+              : `<div class="empty">${BOLT}${t("ui.none")}</div>`}
+          </div>`);
 
     this.shadowRoot.innerHTML = card(blocks.join(""));
 

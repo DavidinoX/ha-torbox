@@ -32,6 +32,7 @@ La card si registra da sola: **Modifica dashboard → Aggiungi card → TorBox**
 | Chiave | Valori | Default |
 |---|---|---|
 | `device_id` | account TorBox | (obbligatorio) |
+| `layout` | `standard`, `compact` (super compatta: ogni sezione su una fascia orizzontale, circa un terzo dell'altezza) | `standard` |
 | `theme` | `auto` (segue HA), `dark`, `light` | `auto` |
 | `size` | `small`, `medium`, `large`, `xlarge` (scala tutta la card) | `medium` |
 | `title` | sottotitolo accanto al logo | — |
@@ -49,8 +50,8 @@ La card si registra da sola: **Modifica dashboard → Aggiungi card → TorBox**
 ```yaml
 type: custom:torbox-card
 device_id: <scelto dall'editor>
+layout: compact
 theme: dark
-size: small
 stats: [download_speed, active_downloads, premium_expires]
 hide_chart: true
 sort: progress
@@ -62,5 +63,5 @@ Clic su una statistica o su un download apre il dettaglio dell'entità.
 
 ## Sviluppo
 
-- `dev/card-test.html`: galleria con 21 configurazioni, larghezze e scenari di dati (servi la cartella del repo, es. `python -m http.server`, e apri `/dev/card-test.html`). Ogni configurazione è validata contro lo schema reale dell'editor della card.
+- `dev/card-test.html`: galleria con 34 configurazioni (layout standard e super compatto), larghezze e scenari di dati (servi la cartella del repo, es. `python -m http.server`, e apri `/dev/card-test.html`). Ogni configurazione è validata contro lo schema reale dell'editor della card.
 - `tests/`: test su un core Home Assistant reale con API TorBox simulata: `pip install pytest-homeassistant-custom-component home-assistant-frontend`, poi `pytest`.
