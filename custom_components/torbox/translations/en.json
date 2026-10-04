@@ -1,0 +1,67 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "TorBox",
+        "description": "Paste your API key from torbox.app → Settings → API.",
+        "data": {
+          "api_key": "API key"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid or expired API key.",
+      "cannot_connect": "Unable to reach TorBox."
+    },
+    "abort": {
+      "already_configured": "This TorBox account is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plan": {
+        "name": "Plan",
+        "state": {
+          "free": "Free",
+          "essential": "Essential",
+          "pro": "Pro",
+          "standard": "Standard"
+        }
+      },
+      "premium_expires": {
+        "name": "Premium expires"
+      },
+      "cooldown_until": {
+        "name": "Cooldown until"
+      },
+      "total_downloaded": {
+        "name": "Total downloads"
+      },
+      "active_downloads": {
+        "name": "Active downloads"
+      },
+      "cloud_items": {
+        "name": "Cloud items"
+      },
+      "download_speed": {
+        "name": "Download speed"
+      },
+      "upload_speed": {
+        "name": "Upload speed"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "TorBox options",
+        "data": {
+          "scan_interval": "Update interval"
+        },
+        "data_description": {
+          "scan_interval": "How often TorBox is polled (4 API calls per update)."
+        }
+      }
+    }
+  }
+}

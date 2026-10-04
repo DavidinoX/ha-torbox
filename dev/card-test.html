@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TorBox card test</title>
+<!--
+  Dev gallery for the real card file. Every case config is validated against the card's own getConfigForm()
+  schema (the same one Home Assistant's visual editor renders), so nothing here is configurable that HA isn't.
+  Serve the repo root (e.g. `python -m http.server`) and open /dev/card-test.html.
+-->
+<style>
+  :root { --page: #f4f5f7; --ink: #1c1f24; --soft: #5f6672; --rule: #dfe3e8; --chip: #e9ecf0; --ok: #087f5b; --bad: #c92a2a; --code: #ffffff; }
+  :root.dark { --page: #111214; --ink: #e8eaed; --soft: #9aa1ab; --rule: #262a30; --chip: #1d2126; --ok: #38d9a9; --bad: #ff8787; --code: #17191c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 Inter, Roboto, system-ui, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 12px 24px;
+    background: color-mix(in srgb, var(--page) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--rule); }
+  header h1 { margin: 0 auto 0 0; font-size: 16px; }
+  header label { display: flex; align-items: center; gap: 6px; color: var(--soft); }
+  main { padding: 24px; }
+  h2 { margin: 40px 0 4px; font-size: 18px; } h2:first-child { margin-top: 0; }
+  .lead { margin: 0 0 16px; color: var(--soft); max-width: 72ch; }
+  .cases { display: flex; flex-wrap: wrap; gap: 32px 28px; align-items: flex-start; }
+  .case { display: flex; flex-direction: column; gap: 10px; }
+  .case h3 { margin: 0; font-size: 14px; }
+  .case p { margin: 0; color: var(--soft); font-size: 12.5px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { padding: 1px 8px; border-radius: 99px; background: var(--chip); color: var(--soft); font-size: 11.5px; }
+  .tag.ok { color: var(--ok); } .tag.bad { color: var(--bad); font-weight: 600; }
+  .frame { position: relative; }
+  .frame.fixed { resize: vertical; overflow: hidden; }
+  pre { margin: 0; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 8px; background: var(--code); color: var(--ink);
+    font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; }
+  table { border-collapse: collapse; width: 100%; max-width: 1100px; font-size: 13px; }
+  th, td { padding: 6px 10px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+  th { color: var(--soft); font-weight: 600; }
+  code { font: 12px ui-monospace, Menlo, Consolas, monospace; }
+  #toast { position: fixed; right: 20px; bottom: 20px; padding: 8px 14px; border-radius: 8px; background: var(--ink); color: var(--page);
+    font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+</style>
+<script>
+  // Lovelace provides <ha-card>; a bare element is enough since the card styles it completely.
+  customElements.define("ha-card", class extends HTMLElement {});
+</script>
+<script>
+  // always the file on disk, never a cached copy
+  document.write(`<script src="../custom_components/torbox/torbox-card.js?${Date.now()}"><\/script>`);
+</script>
+</head>
+<body>
+<header>
+  <h1>TorBox card — test</h1>
+  <label><input type="checkbox" id="dark"> Home Assistant in modalità scura</label>
+  <label>Lingua <select id="lang"><option value="it">Italiano</option><option value="en">English</option></select></label>
+  <label><input type="checkbox" id="live" checked> Aggiornamenti live (ogni 2 s)</label>
+</header>
+<main id="main"></main>
+<div id="toast"></div>
+<script>
+const Card = customElements.get("torbox-card");
+const KEYS = ["plan", "premium_expires", "cooldown_until", "total_downloaded", "active_downloads", "cloud_items", "download_speed", "upload_speed"];
+// entity_id as HA generates it from the translated name ("Total downloads" -> total_downloads)
+const OBJECT_ID = { total_downloaded: "total_downloads" };
+const DEVICE = "torbox-device-1";
+const PLAN_LABEL = { free: "Free", essential: "Essential", pro: "Pro", standard: "Standard" };
+const now = Date.now();
+
+// ---- scenarios: mock exactly what the integration's sensors expose -------------------------------------
+const BASE = [
+  { name: "ubuntu-24.04.1-desktop-amd64.iso", type: "torrent", state: "downloading", progress: 62.4, speed: 9.4e6, eta: 312, size: 6.1e9, seeds: 148, peers: 37 },
+  { name: "Big.Buck.Bunny.2008.2160p.HDR.mkv", type: "usenet", state: "downloading", progress: 18, speed: 3.1e6, eta: 5400, size: 2.1e9, seeds: null, peers: null },
+  { name: "https://example.com/datasets/archive-2026.zip", type: "webdl", state: "stalled (no seeds)", progress: 4.2, speed: 0, eta: 0, size: 5.2e8, seeds: null, peers: null },
+  { name: "debian-12.7.0-amd64-netinst.iso", type: "torrent", state: "metaDL", progress: 0, speed: 0, eta: 0, size: 0, seeds: 0, peers: 2 },
+];
+const MANY = Array.from({ length: 12 }, (_, i) => ({
+  name: `Linux.Distro.Collection.Part${String(i + 1).padStart(2, "0")}.tar`, type: TYPES_CYCLE(i), state: i % 5 === 4 ? "paused" : "downloading",
+  progress: (i * 37) % 100, speed: i % 5 === 4 ? 0 : (12 - i) * 6e5, eta: (i + 1) * 420, size: (i + 2) * 7e8,
+  seeds: TYPES_CYCLE(i) === "torrent" ? 20 + i * 3 : null, peers: TYPES_CYCLE(i) === "torrent" ? 4 + i : null,
+}));
+function TYPES_CYCLE(i) { return ["torrent", "usenet", "webdl"][i % 3]; }
+
+const SCENARIOS = {
+  normal: { plan: "pro", premium: now + 23.5 * 864e5, cooldown: null, total: 1342, cloud: 57, downloads: BASE, upload: 3.5e5, wave: (x) => .35 * Math.sin(x * 5) + .15 * Math.sin(x * 17) },
+  many: { plan: "standard", premium: now + 160 * 864e5, cooldown: null, total: 9876, cloud: 214, downloads: MANY, upload: 1.2e6, wave: (x) => .4 * Math.sin(x * 3) },
+  idle: { plan: "essential", premium: now + 4 * 864e5, cooldown: null, total: 88, cloud: 12, downloads: [], upload: 0, wave: "bursts" },
+  free: { plan: "free", premium: now - 3 * 864e5, cooldown: now + 42 * 60e3, total: 7, cloud: 3, downloads: [BASE[0]], upload: 0, wave: (x) => .3 * Math.sin(x * 9) },
+  nohistory: { plan: "pro", premium: now + 23.5 * 864e5, cooldown: null, total: 1342, cloud: 57, downloads: BASE.slice(0, 2), upload: 2e5, wave: null },
+  unavailable: { unavailable: true },
+};
+
+function makeState(entity_id, state, attributes = {}) {
+  const ts = new Date().toISOString();
+  return { entity_id, state: String(state), attributes, last_changed: ts, last_updated: ts, context: { id: Math.random().toString(36).slice(2) } };
+}
+
+// HA's formatEntityState for these device classes (display precision 2 on speeds, grouping on counts).
+function formatEntityState(lang) {
+  return (s) => {
+    if (s.state === "unavailable") return lang === "it" ? "Non disponibile" : "Unavailable";
+    if (s.state === "unknown") return lang === "it" ? "Sconosciuto" : "Unknown";
+    const a = s.attributes;
+    if (a.device_class === "enum") return PLAN_LABEL[s.state] ?? s.state;
+    if (a.device_class === "timestamp") return new Date(s.state).toLocaleString(lang, { dateStyle: "medium", timeStyle: "short" });
+    const p = a.precision;
+    const v = Number(s.state).toLocaleString(lang, p == null ? {} : { minimumFractionDigits: p, maximumFractionDigits: p });
+    return a.unit_of_measurement ? `${v} ${a.unit_of_measurement}` : v;
+  };
+}
+
+function scenarioStates(sc) {
+  const id = (k) => `sensor.torbox_${OBJECT_ID[k] ?? k}`;
+  if (sc.unavailable) return Object.fromEntries(KEYS.map((k) => [id(k), makeState(id(k), "unavailable", { restored: true })]));
+  const dl = sc.downloads.reduce((t, d) => t + d.speed, 0);
+  const mb = (b) => +(b / 1e6).toFixed(4);
+  return {
+    [id("plan")]: makeState(id("plan"), sc.plan, { device_class: "enum", options: Object.keys(PLAN_LABEL) }),
+    [id("premium_expires")]: makeState(id("premium_expires"), sc.premium ? new Date(sc.premium).toISOString() : "unknown", { device_class: "timestamp" }),
+    [id("cooldown_until")]: makeState(id("cooldown_until"), sc.cooldown ? new Date(sc.cooldown).toISOString() : "unknown", { device_class: "timestamp" }),
+    [id("total_downloaded")]: makeState(id("total_downloaded"), sc.total, { state_class: "total_increasing" }),
+    [id("active_downloads")]: makeState(id("active_downloads"), sc.downloads.length, { state_class: "measurement", downloads: sc.downloads.map((d) => ({ ...d })) }),
+    [id("cloud_items")]: makeState(id("cloud_items"), sc.cloud, { state_class: "measurement" }),
+    [id("download_speed")]: makeState(id("download_speed"), mb(dl), { device_class: "data_rate", unit_of_measurement: "MB/s", precision: 2 }),
+    [id("upload_speed")]: makeState(id("upload_speed"), mb(sc.upload), { device_class: "data_rate", unit_of_measurement: "MB/s", precision: 2 }),
+  };
+}
+
+// recorder history over the last 24 h, one sample per 60 s, answered like history/history_during_period.
+// Curves end on the current live value (x = hours before now, so x = 0 is now) like a real recorder.
+function historyFor(sc) {
+  const out = { "sensor.torbox_download_speed": [], "sensor.torbox_upload_speed": [] };
+  if (!sc.wave) return out;
+  const dl = sc.downloads.reduce((t, d) => t + d.speed, 0) / 1e6, ul = sc.upload / 1e6;
+  for (let t = now - 24 * 3600e3; t <= now; t += 60e3) {
+    const x = (t - now) / 3600e3;
+    const v = sc.wave === "bursts" ? ((x % 3) < -2.6 ? 8 * Math.sin(((x % 3) + 3) / .4 * Math.PI) : 0) : dl * (1 + sc.wave(x));
+    out["sensor.torbox_download_speed"].push({ s: Math.max(0, v).toFixed(3), lu: t / 1000 });
+    out["sensor.torbox_upload_speed"].push({ s: Math.max(0, ul * (1 + .4 * Math.sin(x * 7))).toFixed(3), lu: t / 1000 });
+  }
+  return out;
+}
+
+const entities = Object.fromEntries(KEYS.map((k) => {
+  const entity_id = `sensor.torbox_${OBJECT_ID[k] ?? k}`;
+  return [entity_id, { entity_id, device_id: DEVICE, platform: "torbox", translation_key: k, has_entity_name: true, labels: [] }];
+}));
+entities["sensor.living_room_temperature"] = { entity_id: "sensor.living_room_temperature", device_id: "other", platform: "hue", labels: [] };
+
+const env = { dark: false, lang: "it" };
+const hassFor = {};
+function buildHass(key, states) {
+  const sc = SCENARIOS[key];
+  return {
+    entities, states, language: env.lang, locale: { language: env.lang }, themes: { darkMode: env.dark },
+    formatEntityState: formatEntityState(env.lang),
+    callWS: async (msg) => {
+      if (msg.type !== "history/history_during_period") throw new Error("unknown command");
+      if (key === "nohistory") throw new Error("recorder excluded");
+      const start = Date.parse(msg.start_time) / 1000, h = historyFor(sc);
+      return Object.fromEntries(msg.entity_ids.map((e) => [e, (h[e] ?? []).filter((p) => p.lu >= start)]));
+    },
+  };
+}
+for (const k of Object.keys(SCENARIOS)) hassFor[k] = buildHass(k, scenarioStates(SCENARIOS[k]));
+
+// ---- cases: what a user can set in the HA editor (validated below) -------------------------------------
+const stub = Card.getStubConfig(hassFor.normal);
+const SECTIONS = [
+  { title: "Configurazioni", lead: "Le stesse opzioni dell'editor visuale di HA. La prima è esattamente ciò che HA inserisce quando aggiungi la card dal selettore.", cases: [
+    { title: "Default (dal selettore card)", desc: "getStubConfig(): account rilevato + statistiche predefinite.", width: 480, config: stub },
+    { title: "Tema chiaro + sottotitolo", width: 480, config: { ...stub, theme: "light", title: "Casa" } },
+    { title: "Tema scuro forzato, numeri normali", width: 480, config: { ...stub, theme: "dark", plain_numbers: true } },
+    { title: "Statistiche scelte e riordinate", desc: "8 statistiche: 4 per riga, 2 su schermi stretti.", width: 520,
+      config: { device_id: DEVICE, stats: ["download_speed", "upload_speed", "plan", "premium_expires", "active_downloads", "cloud_items", "total_downloaded", "cooldown_until"], hide_chart: true, hide_downloads: true } },
+    { title: "Solo velocità, grafico 6 ore", width: 420, config: { device_id: DEVICE, hide_stats: true, hide_downloads: true, chart_hours: 6 } },
+    { title: "Solo grafico 24 h", width: 420, config: { device_id: DEVICE, hide_header: true, hide_speed: true, hide_upload: true, hide_stats: true, hide_downloads: true, chart_hours: 24 } },
+    { title: "Solo download, per avanzamento", width: 480, config: { device_id: DEVICE, hide_header: true, hide_speed: true, hide_upload: true, hide_chart: true, hide_stats: true, sort: "progress" } },
+    { title: "Download essenziali", desc: "Senza tipo, seed, peer e dimensione.", width: 420,
+      config: { device_id: DEVICE, hide_chart: true, hide_stats: true, hide_details: ["type", "seeds", "peers", "size"] } },
+    { title: "Solo torrent, per velocità", width: 480, config: { device_id: DEVICE, hide_types: ["usenet", "webdl"], sort: "speed", hide_plan: true } },
+  ] },
+  { title: "Dimensioni e larghezze", lead: "L'opzione size scala tutto; i punti di rottura seguono la larghezza reale della card (colonne della griglia a sezioni).", cases: [
+    { title: "size: small @ 280 px", desc: "3 colonne su 12 in vista a sezioni / telefono.", width: 280, config: { ...stub, size: "small", max_downloads: 3 } },
+    { title: "size: medium @ 340 px", width: 340, config: { ...stub, max_downloads: 3 } },
+    { title: "size: large @ 560 px", width: 560, config: { ...stub, size: "large", max_downloads: 2 } },
+    { title: "size: xlarge @ 760 px", desc: "Card a tutta larghezza su tablet a muro.", width: 760, config: { ...stub, size: "xlarge", max_downloads: 2, theme: "light" } },
+    { title: "Altezza fissa (righe della griglia)", desc: "Righe fisse in vista a sezioni: la lista scorre dentro la card. Trascina l'angolo per cambiare altezza.", width: 420, height: 560, config: { ...stub, hide_stats: true, max_downloads: 12 }, scenario: "many" },
+  ] },
+  { title: "Quantità di dati", lead: "Stati reali che l'integrazione può produrre.", cases: [
+    { title: "12 download, massimo 5", width: 420, config: { ...stub, hide_chart: true, max_downloads: 5 }, scenario: "many" },
+    { title: "Nessun download", width: 420, config: stub, scenario: "idle" },
+    { title: "Nessun download + hide_empty", width: 420, config: { ...stub, hide_empty: true }, scenario: "idle" },
+    { title: "Piano free, cooldown, premium scaduto", width: 420, config: { ...stub, stats: ["plan", "premium_expires", "cooldown_until", "total_downloaded"] }, scenario: "free" },
+    { title: "Recorder escluso (niente cronologia)", desc: "Il grafico si riempie solo con gli aggiornamenti live.", width: 420, config: stub, scenario: "nohistory" },
+    { title: "Integrazione non disponibile", width: 420, config: stub, scenario: "unavailable" },
+    { title: "Nessun account selezionato", width: 340, config: { device_id: "" } },
+  ] },
+];
+
+// ---- validation against the card's real editor schema ----------------------------------------------------
+const schema = Card.getConfigForm();
+const fields = [];
+(function walk(items, section) {
+  for (const s of items) s.schema ? walk(s.schema, s.title ?? section) : fields.push({ ...s, section });
+})(schema.schema, "");
+const byName = Object.fromEntries(fields.map((f) => [f.name, f]));
+const optionValues = (f) => f.selector.select?.options.map((o) => o.value);
+
+function validate(config) {
+  const errors = [];
+  for (const [k, v] of Object.entries(config)) {
+    if (k === "type") continue;
+    const f = byName[k];
+    if (!f) { errors.push(`chiave sconosciuta: ${k}`); continue; }
+    const sel = f.selector;
+    if (sel.boolean && typeof v !== "boolean") errors.push(`${k}: atteso booleano`);
+    if (sel.number && (typeof v !== "number" || v < sel.number.min || v > sel.number.max)) errors.push(`${k}: fuori range ${sel.number.min}–${sel.number.max}`);
+    if (sel.select) {
+      const allowed = optionValues(f);
+      const vals = sel.select.multiple ? v : [v];
+      if (sel.select.multiple && !Array.isArray(v)) errors.push(`${k}: attesa lista`);
+      else for (const x of vals) if (!allowed.includes(x)) errors.push(`${k}: valore non valido "${x}"`);
+    }
+  }
+  return errors;
+}
+
+const yaml = (config) => ["type: custom:torbox-card", ...Object.entries(config).map(([k, v]) =>
+  Array.isArray(v) ? `${k}:${v.length ? v.map((x) => `\n  - ${x}`).join("") : " []"}` : `${k}: ${typeof v === "string" && (v === "" || /[:#]/.test(v)) ? JSON.stringify(v) : v}`)].join("\n");
+
+// ---- render ----------------------------------------------------------------------------------------------
+const main = document.getElementById("main");
+const cards = [];
+
+function optionTable() {
+  const rows = fields.map((f) => {
+    const sel = f.selector, type = Object.keys(sel)[0];
+    const values = sel.select ? optionValues(f).map((v) => `<code>${v}</code>`).join(", ")
+      : sel.number ? `${sel.number.min}–${sel.number.max}` : sel.device ? `dispositivo dell'integrazione <code>${sel.device.integration}</code>` : "";
+    const kind = type === "select" && sel.select.multiple ? "lista" : { boolean: "booleano", number: "numero", text: "testo", select: "scelta", device: "dispositivo" }[type];
+    return `<tr><td>${f.section || "—"}</td><td><code>${f.name}</code></td><td>${schema.computeLabel(f)}</td><td>${kind}</td><td>${values}</td><td>${f.default != null ? `<code>${f.default}</code>` : f.selector.boolean ? "<code>false</code>" : ""}</td></tr>`;
+  }).join("");
+  return `<h2>Opzioni dell'editor (lette da getConfigForm)</h2>
+    <p class="lead">Questa tabella è generata dallo schema che l'editor visuale di Home Assistant usa per la card: è l'elenco completo di ciò che è configurabile.</p>
+    <table><thead><tr><th>Sezione</th><th>Chiave</th><th>Etichetta</th><th>Tipo</th><th>Valori</th><th>Default</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function render() {
+  cards.length = 0;
+  main.innerHTML = optionTable();
+  for (const section of SECTIONS) {
+    main.insertAdjacentHTML("beforeend", `<h2>${section.title}</h2><p class="lead">${section.lead}</p>`);
+    const wrap = document.createElement("div");
+    wrap.className = "cases";
+    for (const c of section.cases) {
+      const errors = validate(c.config);
+      const scenario = c.scenario ?? "normal";
+      const el = document.createElement("div");
+      el.className = "case";
+      el.style.width = `${c.width}px`;
+      el.innerHTML = `
+        <h3>${c.title}</h3>
+        ${c.desc ? `<p>${c.desc}</p>` : ""}
+        <div class="tags">
+          <span class="tag">${c.width} px${c.height ? ` × ${c.height} px` : ""}</span>
+          <span class="tag">dati: ${scenario}</span>
+          <span class="tag ${errors.length ? "bad" : "ok"}">${errors.length ? errors.join(" · ") : "✓ configurabile in HA"}</span>
+        </div>
+        <div class="frame ${c.height ? "fixed" : ""}" style="${c.height ? `height:${c.height}px` : ""}"></div>
+        <pre>${yaml(c.config).replace(/</g, "&lt;")}</pre>`;
+      const card = document.createElement("torbox-card");
+      card.setConfig(c.config);
+      card.hass = hassFor[scenario];
+      el.querySelector(".frame").append(card);
+      cards.push({ card, scenario, config: c.config });
+      wrap.append(el);
+    }
+    main.append(wrap);
+  }
+}
+
+// live: progress and speeds move like real polling, with fresh state objects as HA delivers them
+function tick() {
+  for (const [key, sc] of Object.entries(SCENARIOS)) {
+    if (sc.unavailable) continue;
+    for (const d of sc.downloads) {
+      if (!d.speed) continue;
+      d.speed = Math.max(2e5, d.speed * (0.85 + Math.random() * 0.3));
+      d.progress = d.progress >= 100 ? 0 : Math.min(100, d.progress + Math.random() * 1.5);
+      d.eta = Math.max(5, d.eta - 2);
+    }
+    sc.upload = sc.upload ? Math.max(5e4, sc.upload * (0.9 + Math.random() * 0.2)) : 0;
+    hassFor[key] = buildHass(key, scenarioStates(sc));
+  }
+  for (const { card, scenario } of cards) card.hass = hassFor[scenario];
+}
+let timer = setInterval(tick, 2000);
+
+document.getElementById("live").onchange = (e) => { clearInterval(timer); if (e.target.checked) timer = setInterval(tick, 2000); };
+document.getElementById("dark").onchange = (e) => {
+  env.dark = e.target.checked;
+  document.documentElement.classList.toggle("dark", env.dark);
+  for (const k of Object.keys(SCENARIOS)) hassFor[k] = buildHass(k, hassFor[k].states);
+  for (const { card, scenario } of cards) card.hass = hassFor[scenario];
+};
+document.getElementById("lang").onchange = (e) => {
+  env.lang = e.target.value;
+  document.documentElement.lang = env.lang; // HA sets this too; the card reads it for its labels
+  for (const k of Object.keys(SCENARIOS)) hassFor[k] = buildHass(k, hassFor[k].states);
+  render();
+};
+
+const toast = document.getElementById("toast");
+document.addEventListener("hass-more-info", (e) => {
+  toast.textContent = `more-info → ${e.detail.entityId}`;
+  toast.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => toast.classList.remove("show"), 1600);
+});
+
+render();
+window.__report = () => ({
+  cases: cards.length,
+  invalid: SECTIONS.flatMap((s) => s.cases).filter((c) => validate(c.config).length).map((c) => c.title),
+  injected: cards.reduce((n, { card }) => n + card.shadowRoot.querySelectorAll("img,script,iframe").length, 0),
+});
+</script>
+</body>
+</html>

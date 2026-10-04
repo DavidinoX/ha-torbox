@@ -1,0 +1,18 @@
+{
+  "domain": "torbox",
+  "name": "TorBox",
+  "codeowners": [
+    "@DavidinoX"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "frontend",
+    "http"
+  ],
+  "documentation": "https://github.com/DavidinoX/ha-torbox",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/DavidinoX/ha-torbox/issues",
+  "requirements": [],
+  "version": "1.1.0"
+}
