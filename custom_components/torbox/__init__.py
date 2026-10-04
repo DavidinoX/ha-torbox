@@ -21,7 +21,7 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 DOMAIN = "torbox"
-VERSION = "1.1.0"  # keep in sync with manifest.json, busts the card's browser cache
+VERSION = "1.1.1"  # keep in sync with manifest.json, busts the card's browser cache
 API = "https://api.torbox.app/v1/api/"
 CARD_URL = f"/{DOMAIN}/torbox-card.js"
 # item type -> API path prefix of its "mylist" endpoint

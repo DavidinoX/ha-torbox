@@ -17,11 +17,14 @@ from homeassistant.util import dt as dt_util
 from custom_components.torbox import API, CARD_URL, DOMAIN
 
 USER = {"id": 7, "email": "me@example.com", "plan": 2, "premium_expires_at": "2026-12-01T00:00:00Z",
-        "cooldown_until": None, "total_downloaded": 42}
+        "cooldown_until": "2026-10-05T17:57:17Z", "total_downloaded": 42}  # stale on paid plans
 TORRENTS = [
     {"name": "Ubuntu.iso", "active": True, "download_finished": False, "progress": 0.5, "download_speed": 5_000_000,
      "upload_speed": 250_000, "eta": 60, "size": 6_000_000_000, "download_state": "downloading", "seeds": 9, "peers": 3},
     {"name": "seeding", "active": True, "download_finished": True, "download_speed": 0, "upload_speed": 750_000},
+    # what TorBox really returns while a torrent is being checked
+    {"name": "checking", "active": True, "download_finished": False, "progress": 0, "download_speed": 0,
+     "upload_speed": 0, "eta": 8640000, "size": -1, "download_state": "checking", "seeds": 0, "peers": 1},
 ]
 WEBDL = [{"name": "idle", "active": False, "download_finished": False, "download_speed": 999}]
 
@@ -77,16 +80,18 @@ async def test_sensors(hass, aioclient_mock):
 
     assert state("plan").state == "pro"
     assert state("premium_expires").state == "2026-12-01T00:00:00+00:00"
-    assert state("cooldown_until").state == "unknown"
+    assert state("cooldown_until").state == "unknown"  # Pro: no cooldown
     assert state("total_downloads").state == "42"
-    assert state("active_downloads").state == "1"
-    assert state("cloud_items").state == "3"
+    assert state("active_downloads").state == "2"
+    assert state("cloud_items").state == "4"
     assert float(state("download_speed").state) == 5.0  # 5e6 B/s shown in MB/s, idle item ignored
     assert state("download_speed").attributes["unit_of_measurement"] == "MB/s"
     assert float(state("upload_speed").state) == 1.0
     assert state("active_downloads").attributes["downloads"] == [
         {"name": "Ubuntu.iso", "type": "torrent", "state": "downloading", "progress": 50.0, "speed": 5_000_000,
-         "eta": 60, "size": 6_000_000_000, "seeds": 9, "peers": 3}
+         "eta": 60, "size": 6_000_000_000, "seeds": 9, "peers": 3},
+        {"name": "checking", "type": "torrent", "state": "checking", "progress": 0.0, "speed": 0,
+         "eta": 0, "size": 0, "seeds": 0, "peers": 1},
     ]
 
 

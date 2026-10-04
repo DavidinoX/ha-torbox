@@ -22,6 +22,7 @@ from homeassistant.util import dt as dt_util
 from . import DOMAIN
 
 PLANS = ["free", "essential", "pro", "standard"]  # index == TorBox plan id
+UNKNOWN_ETA = 8640000
 
 
 def _ts(value: str | None):
@@ -68,7 +69,8 @@ SENSORS = (
         key="cooldown_until",
         icon="mdi:timer-sand",
         device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=lambda d: _ts(d["user"].get("cooldown_until")),
+        # only the Free plan has a cooldown; paid accounts still carry a stale timestamp
+        value_fn=lambda d: _ts(d["user"].get("cooldown_until")) if d["user"].get("plan") == 0 else None,
     ),
     TorBoxSensorDescription(
         key="total_downloaded",
@@ -137,8 +139,9 @@ class TorBoxSensor(CoordinatorEntity, SensorEntity):
                     "state": i.get("download_state"),
                     "progress": round((i.get("progress") or 0) * 100, 1),
                     "speed": i.get("download_speed") or 0,
-                    "eta": i.get("eta") or 0,
-                    "size": i.get("size") or 0,
+                    # TorBox sends eta 8640000 (100 days) for "unknown" and size -1 while checking
+                    "eta": eta if 0 < (eta := i.get("eta") or 0) < UNKNOWN_ETA else 0,
+                    "size": max(i.get("size") or 0, 0),
                     "seeds": i.get("seeds"),  # torrents only, None otherwise
                     "peers": i.get("peers"),
                 }
