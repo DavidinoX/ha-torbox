@@ -387,7 +387,7 @@ class TorBoxCard extends HTMLElement {
       const s = st[k];
       if (!ok(s)) continue;
       const pts = this._series[k], p = { t: Date.parse(s.last_updated), v: Number(s.state) };
-      if (!pts.length || pts.at(-1).t < p.t) pts.push(p);
+      if (!pts.length || pts[pts.length - 1].t < p.t) pts.push(p);
       while (pts.length > 2 && pts[1].t < cutoff) pts.shift();
     }
   }
@@ -399,9 +399,10 @@ class TorBoxCard extends HTMLElement {
     const peak = Math.max(...all.map((p) => p.v));
     const max = peak || 1; // vertical scale only; a flat zero line stays at the bottom
     const line = (pts) => {
-      const from = Math.max(0, pts.findLastIndex((p) => p.t < t0));
+      let from = pts.length - 1; // last point before the window, so the line starts at the left edge
+      while (from > 0 && pts[from].t >= t0) from--;
       const xy = pts.slice(from).map((p) => [Math.max(0, ((p.t - t0) / span) * W), H - 2 - (p.v / max) * (H - 6)]);
-      if (xy.length) xy.push([W, xy.at(-1)[1]]);
+      if (xy.length) xy.push([W, xy[xy.length - 1][1]]);
       return xy;
     };
     const dl = line(this._series.download_speed);
@@ -477,7 +478,19 @@ class TorBoxCard extends HTMLElement {
       </div>`;
   }
 
+  // Never let an exception escape: from setConfig it would become HA's generic "configuration error".
   _render() {
+    try {
+      this._draw();
+    } catch (err) {
+      console.error("torbox-card:", err);
+      this._last = null;
+      this.shadowRoot.innerHTML =
+        `<style>${CSS}</style><ha-card><div class="empty">${BOLT}TorBox card: ${esc(err && err.message ? err.message : err)}</div></ha-card>`;
+    }
+  }
+
+  _draw() {
     const c = this._config, hass = this._hass;
     if (!c || !hass) return;
     const ids = this._entityIds();
@@ -618,7 +631,8 @@ class TorBoxCard extends HTMLElement {
 
 if (!customElements.get("torbox-card")) {
   customElements.define("torbox-card", TorBoxCard);
-  (window.customCards ||= []).push({
+  window.customCards = window.customCards || [];
+  window.customCards.push({
     type: "torbox-card",
     name: "TorBox",
     description: "TorBox account stats, live speed chart and downloads in progress",

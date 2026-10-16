@@ -43,6 +43,12 @@
 <script>
   // Lovelace provides <ha-card>; a bare element is enough since the card styles it completely.
   customElements.define("ha-card", class extends HTMLElement {});
+  // ?legacy: drop built-ins missing on older mobile web engines (iOS < 15.4, outdated Android WebView)
+  if (/legacy/.test(location.search)) {
+    delete Array.prototype.at;
+    delete Array.prototype.findLastIndex;
+    delete String.prototype.at;
+  }
 </script>
 <script>
   // always the file on disk, never a cached copy
